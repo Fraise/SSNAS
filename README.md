@@ -1,2 +1,2 @@
 # SSNAS
-Simple Serial Number Authentication Serveur
+Simple Serial Number Authentication Server
