@@ -67,6 +67,8 @@ int main(int argc, char* argv[])
 		return ERROR;
 	}
 
+	SSL_CTX_set_verify(ctx, (SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT), NULL);
+
 	ssl = SSL_new(ctx);
 
 	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -88,7 +90,7 @@ int main(int argc, char* argv[])
 		return ERROR;
 	}
 
-	printf("Socket binded\n");
+	printf("Socket binded!\n");
 
 	/* Receive a TCP connection. */
 	if (listen(server_socket, 5) < 0)
