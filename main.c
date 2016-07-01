@@ -49,16 +49,24 @@ int main(int argc, char* argv[])
 		port = DEFAULT_PORT;
 	}
 
-	if (SSL_CTX_use_certificate_file(ctx, "myCert.pem", SSL_FILETYPE_PEM) <= 0)
+	//Adding a certificate, a key to the ctx and verify their location
+
+	if (SSL_CTX_use_certificate_file(ctx, "/path/to/my/cert.pem", SSL_FILETYPE_PEM) <= 0)
 	{
 		fprintf(stderr, "Failed to load certificate.\n");
 		return ERROR;
 	}
 
-	if (SSL_CTX_use_PrivateKey_file(ctx, "myKey.pem", SSL_FILETYPE_PEM) <= 0)
+	if (SSL_CTX_use_PrivateKey_file(ctx, "/path/to/my/key.pem", SSL_FILETYPE_PEM) <= 0)
 	{
 		fprintf(stderr, "Failed to load certificate.\n");
 		return ERROR;
+	}
+
+	if (SSL_CTX_load_verify_locations(ctx, "/path/to/my/cert.pem", "/path/to/my/") <= 0)
+	{
+		fprintf(stderr, "Failed to verify location.\n");
+		return ERROR;	
 	}
 
 	if (!SSL_CTX_check_private_key(ctx))
@@ -69,9 +77,9 @@ int main(int argc, char* argv[])
 
 	SSL_CTX_set_verify(ctx, (SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT), NULL);
 
-	ssl = SSL_new(ctx);
+	ssl = SSL_new(ctx);										//Creating SSL context
 
-	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);					//Creating server socket
 	
 	if (server_socket < 0)
 	{
@@ -84,7 +92,7 @@ int main(int argc, char* argv[])
 	server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_sockaddr.sin_port = htons(port);
 	 
-	if (bind(server_socket, (struct sockaddr*)&server_sockaddr,sizeof(server_sockaddr)) < 0)
+	if (bind(server_socket, (struct sockaddr*)&server_sockaddr,sizeof(server_sockaddr)) < 0)	//Binding server socket
 	{
 		fprintf(stderr, "Failed to bind socket.\n");
 		return ERROR;
@@ -92,7 +100,8 @@ int main(int argc, char* argv[])
 
 	printf("Socket binded!\n");
 
-	/* Receive a TCP connection. */
+	// Receive a TCP connection.
+
 	if (listen(server_socket, 5) < 0)
 	{
 		fprintf(stderr, "Failed to listen to TCP connection.\n");
@@ -107,7 +116,7 @@ int main(int argc, char* argv[])
 		return ERROR;
 	}
 
-	SSL_set_fd(ssl, client);
+	SSL_set_fd(ssl, client);									//Creating SSL socket
 
 	if (SSL_accept(ssl) <= 0)
 	{
