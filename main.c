@@ -13,8 +13,8 @@
 
 int main(int argc, char* argv[])
 {
-	SSL_library_init();			/* load encryption & hash algorithms for SSL */                
-	SSL_load_error_strings();		/* load the error strings for good error reporting */
+	SSL_library_init();												//Load encryption & hash algorithms for SSL
+	SSL_load_error_strings();										//Load the error strings for good error reporting
 	OpenSSL_add_ssl_algorithms();	
 
 	const SSL_METHOD* server_method = SSLv23_server_method();
@@ -23,6 +23,7 @@ int main(int argc, char* argv[])
 	struct sockaddr_in server_sockaddr;
 	int server_socket, client, opt, port = 0;
 	uint sockaddr_len = sizeof(server_sockaddr);
+	char r_buffer[32], w_buffer[32];
 
 	if ((opt = getopt(argc, argv, "p:")) != -1)
 	{
@@ -77,59 +78,70 @@ int main(int argc, char* argv[])
 
 	SSL_CTX_set_verify(ctx, (SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT), NULL);
 
-	ssl = SSL_new(ctx);										//Creating SSL context
+	//Creating SSL context
 
-	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);					//Creating server socket
+	ssl = SSL_new(ctx);
+
+	//Creating server socket
+
+	server_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
 	if (server_socket < 0)
 	{
 		fprintf(stderr, "Failed to create socket.\n");
 		return ERROR;
 	}
-	 
+		 
 	memset(&server_sockaddr, 0, sizeof(server_sockaddr));
 	server_sockaddr.sin_family = AF_INET;
 	server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_sockaddr.sin_port = htons(port);
-	 
-	if (bind(server_socket, (struct sockaddr*)&server_sockaddr,sizeof(server_sockaddr)) < 0)	//Binding server socket
+
+	//Binding server socket
+		 
+	if (bind(server_socket, (struct sockaddr*)&server_sockaddr,sizeof(server_sockaddr)) < 0)
 	{
 		fprintf(stderr, "Failed to bind socket.\n");
 		return ERROR;
 	}
-
-	printf("Socket binded!\n");
-
-	// Receive a TCP connection.
 
 	if (listen(server_socket, 5) < 0)
 	{
 		fprintf(stderr, "Failed to listen to TCP connection.\n");
 		return ERROR;
 	}
-
-	client = accept(server_socket, (struct sockaddr*)&server_sockaddr, &sockaddr_len);
-
-	if (client < 0)
+		
+	while (1)
 	{
-		fprintf(stderr, "Failed to accept TCP connection.\n");
-		return ERROR;
+		client = accept(server_socket, (struct sockaddr*)&server_sockaddr, &sockaddr_len);
+
+		if (client < 0)
+		{
+			fprintf(stderr, "Failed to accept TCP connection.\n");
+			return ERROR;
+		}
+
+		//Creating SSL socket
+
+		SSL_set_fd(ssl, client);
+
+		if (SSL_accept(ssl) <= 0)
+		{
+			fprintf(stderr, "Failed to complete SSL handshake.\n");
+			return ERROR;
+		}
+		else
+		{
+			SSL_read(ssl, r_buffer, 32);
+			printf("Received : %s\n", r_buffer);
+			strcpy(w_buffer, r_buffer);
+			SSL_write(ssl, w_buffer, strlen(w_buffer));
+		}
+
+		close(client);
 	}
 
-	SSL_set_fd(ssl, client);									//Creating SSL socket
-
-	if (SSL_accept(ssl) <= 0)
-	{
-		fprintf(stderr, "Failed to initiate SSL handshake.\n");
-		return ERROR;
-	}
-	else
-	{
-		SSL_write(ssl, "Echo!\n", strlen("Echo!\n"));
-	}
-
-        SSL_free(ssl);
-        close(client);
+	SSL_free(ssl);
 
 	return 0;
 }
