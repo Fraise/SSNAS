@@ -6,6 +6,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include "ssl.h"
+
 #define SERIAL "0123456789ABCDEF"
 #define DEFAULT_PORT 12012
 
@@ -13,8 +15,8 @@
 
 int main(int argc, char* argv[])
 {
-	SSL_library_init();												//Load encryption & hash algorithms for SSL
-	SSL_load_error_strings();										//Load the error strings for good error reporting
+	SSL_library_init();						//Load encryption & hash algorithms for SSL
+	SSL_load_error_strings();					//Load the error strings for good error reporting
 	OpenSSL_add_ssl_algorithms();	
 
 	const SSL_METHOD* server_method = SSLv23_server_method();
@@ -50,37 +52,15 @@ int main(int argc, char* argv[])
 		port = DEFAULT_PORT;
 	}
 
-	//Adding a certificate, a key to the ctx and verify their location
+	//Creating ssl context
 
-	if (SSL_CTX_use_certificate_file(ctx, "/path/to/my/cert.pem", SSL_FILETYPE_PEM) <= 0)
+	ssl = create_ssl_context(ctx);
+
+	if (ssl == NULL)
 	{
-		fprintf(stderr, "Failed to load certificate.\n");
+		fprintf(stderr, "Failed to create ssl context.\n");
 		return ERROR;
 	}
-
-	if (SSL_CTX_use_PrivateKey_file(ctx, "/path/to/my/key.pem", SSL_FILETYPE_PEM) <= 0)
-	{
-		fprintf(stderr, "Failed to load certificate.\n");
-		return ERROR;
-	}
-
-	if (SSL_CTX_load_verify_locations(ctx, "/path/to/my/cert.pem", "/path/to/my/") <= 0)
-	{
-		fprintf(stderr, "Failed to verify location.\n");
-		return ERROR;	
-	}
-
-	if (!SSL_CTX_check_private_key(ctx))
-	{
-		fprintf(stderr, "Private key does not match the public certificate.\n");
-		return ERROR;
-	}
-
-	SSL_CTX_set_verify(ctx, (SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT), NULL);
-
-	//Creating SSL context
-
-	ssl = SSL_new(ctx);
 
 	//Creating server socket
 
