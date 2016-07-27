@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
 
@@ -273,26 +274,42 @@ const unsigned int cert_trusted_der_len = 899;
 SSL* create_ssl_context(SSL_CTX* ctx)
 {
 	SSL* ssl;
-	//X509_STORE_CTX* ctx_store = X509_STORE_CTX_new();
+	//X509_STORE_CTX* store_ctx = X509_STORE_CTX_new();
+	//X509_STORE* cert_store = NULL;
 	X509* x509_cert = NULL;
-	unsigned char* cert_trusted_der_ptr;
+	BIO* bio_mem = BIO_new(BIO_s_mem());
 
-	cert_trusted_der_ptr = (unsigned char*)malloc((size_t)cert_trusted_der_len * sizeof(unsigned char));
-	memcpy(cert_trusted_der_ptr, cert_trusted_der, (size_t)cert_trusted_der_len * sizeof(unsigned char));
-	d2i_X509(&x509_cert, (const unsigned char**)&cert_trusted_der_ptr, cert_trusted_der_len * sizeof(unsigned char));
+	bio_mem = BIO_new_mem_buf(cert_trusted_der, cert_trusted_der_len);
+
+	d2i_X509_bio(bio_mem, &x509_cert);
 
 	if (x509_cert == NULL)
 	{
 		fprintf(stderr, "Failed to load DER file from memory.\n");
 		return NULL;
 	}
+	/*
+	X509_STORE_add_cert(cert_store, x509_cert);	//x509_cert is bad? :/
 
+	if (cert_store == NULL)
+	{
+		fprintf(stderr, "Failed to add cert to store.\n");
+		return NULL;
+	}
+	*/
+	
 	if (SSL_CTX_use_certificate_ASN1(ctx, cert_trusted_asn1_len, cert_trusted_asn1) <= 0)
 	{
 		fprintf(stderr, "Failed to load certificate.\n");
 		return NULL;
 	}
-
+	/*
+	if (SSL_CTX_use_certificate(ctx, x509_cert) <= 0)
+	{
+		fprintf(stderr, "Failed to load certificate.\n");
+		return NULL;
+	}
+	*/
 	/*
 	if (SSL_CTX_use_certificate_file(ctx, "/path/to/my/cert.pem", SSL_FILETYPE_PEM) <= 0)
 	{
@@ -317,13 +334,13 @@ SSL* create_ssl_context(SSL_CTX* ctx)
 		return NULL;
 	}
 	*/
-	/*
+
 	if (SSL_CTX_load_verify_locations(ctx, "/home/alex/Documents/certs/cert.pem", "/home/alex/Documents/certs/") <= 0)
 	{
 		fprintf(stderr, "Failed to verify location.\n");
 		return NULL;
 	}
-	*/
+
 	if (!SSL_CTX_check_private_key(ctx))
 	{
 		fprintf(stderr, "Private key does not match the public certificate.\n");
@@ -334,9 +351,9 @@ SSL* create_ssl_context(SSL_CTX* ctx)
 
 	//Creating SSL context
 
+	BIO_free(bio_mem);
+
 	ssl = SSL_new(ctx);
-	
-	free(cert_trusted_der_ptr);
 
 	return ssl;
 }
